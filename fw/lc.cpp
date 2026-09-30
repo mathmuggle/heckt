@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <EEPROM.h>
 #include <math.h>
 
 #include "lc.h"
@@ -22,6 +23,41 @@ void lc_init(void)
   pinMode(HECKT_PIN_RELAY, OUTPUT);
   pinMode(HECKT_PIN_DUT, INPUT_PULLUP);
   freq_init(HECKT_TIME_FREQ_GATE_MS);
+  lc_meas_stop();
+  is_calib = false;
+
+  if (EEPROM.read(HECKT_EEPROM_ADDR_CALIB_FLAG) == HECKT_EEPROM_CALIB_FLAG_VALID)
+  {
+    EEPROM.get(HECKT_EEPROM_ADDR_EFF_F, eff_f);
+    EEPROM.get(HECKT_EEPROM_ADDR_EFF_C, eff_c);
+    EEPROM.get(HECKT_EEPROM_ADDR_EFF_L, eff_i);
+
+    is_calib = isfinite(eff_f) && eff_f > 0.0 &&
+               isfinite(eff_c) && eff_c > 0.0 &&
+               isfinite(eff_i) && eff_i > 0.0;
+  }
+
+  if (!is_calib)
+  {
+    eff_f = 0.0;
+    eff_c = 0.0;
+    eff_i = 0.0;
+  }
+}
+
+bool lc_is_calibrated(void)
+{
+  return is_calib;
+}
+
+void lc_calibration_reset(void)
+{
+  EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_INVALID);
+  lc_meas_stop();
+  is_calib = false;
+  eff_f = 0.0;
+  eff_c = 0.0;
+  eff_i = 0.0;
 }
 
 void lc_meas_start(void)
@@ -171,6 +207,13 @@ bool lc_calibrate(void)
   }
 
   eff_f = freq_off;
+
+  EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_INVALID);
+  EEPROM.put(HECKT_EEPROM_ADDR_EFF_F, eff_f);
+  EEPROM.put(HECKT_EEPROM_ADDR_EFF_C, eff_c);
+  EEPROM.put(HECKT_EEPROM_ADDR_EFF_L, eff_i);
+  EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_VALID);
+
   is_calib = true;
 
   return true;

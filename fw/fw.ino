@@ -1,5 +1,6 @@
 #include "lc.h"
 #include "gui.h"
+#include "version.h"
 
 static gui_t current_page = GUI_CALIBRATION_INFO;
 
@@ -12,7 +13,34 @@ void setup()
     while(1){}
   }
 
+  const uint32_t start_ms = millis();
+
+  // Forget calibration at startup
+  while (digitalRead(HECKT_PIN_BUTTON) == LOW)
+  {
+    if (millis() - start_ms >= HECKT_TIME_CALIB_RESET_HOLD_MS)
+    {
+      lc_calibration_reset();
+      break;
+    }
+
+    delay(1);
+  }
+
   gui_render_page(GUI_TITLE);
+
+  // Startup press should not start calibration.
+  while (digitalRead(HECKT_PIN_BUTTON) == LOW)
+  {
+    delay(1);
+  }
+
+  if (lc_is_calibrated())
+  {
+    current_page = lc_dut_iscap() ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+    lc_meas_start();
+  }
+
   gui_render_page(current_page);
 }
 
