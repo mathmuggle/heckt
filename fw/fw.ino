@@ -1,12 +1,83 @@
+#include "lc.h"
 #include "gui.h"
+
+static gui_t current_page = GUI_CALIBRATION_INFO;
 
 void setup()
 {
-  Serial.begin(115200);
-  gui_init();
+  lc_init();
+
+  if (!gui_init())
+  {
+    while(1){}
+  }
+
+  gui_render_page(GUI_TITLE);
+  gui_render_page(current_page);
 }
 
 void loop()
 {
-  gui_debug(1500);
+  const bool capacitance_mode = lc_dut_iscap();
+
+  if (gui_is_pressed())
+  {
+    switch (current_page)
+    {
+      case GUI_CALIBRATION_INFO:
+      {
+        gui_render_page(GUI_CALIBRATION_LOADING);
+
+        if (lc_calibrate())
+        {
+          current_page = GUI_CALIBRATION_RESULT;
+          gui_render_page(current_page);
+        }
+        else
+        {
+          gui_render_page(LC_ERROR_CALIBRATION);
+        }
+
+        break;
+      }
+
+      case GUI_CALIBRATION_RESULT:
+      {
+        current_page = capacitance_mode ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+        lc_meas_start();
+        gui_render_page(current_page);
+        break;
+      }
+
+      default:
+      {
+        lc_meas_stop();
+        current_page = GUI_CALIBRATION_INFO;
+        gui_render_page(current_page);
+        break;
+      }
+    }
+
+    return;
+  }
+
+  if (current_page != GUI_CAPACITANCE && current_page != GUI_INDUCTANCE)
+  {
+    return;
+  }
+
+  const gui_t measurement_page =
+    capacitance_mode ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+
+  if (current_page != measurement_page)
+  {
+    lc_meas_start();
+    current_page = measurement_page;
+    gui_render_page(current_page);
+  }
+
+  if (lc_update())
+  {
+    gui_render_page(current_page);
+  }
 }

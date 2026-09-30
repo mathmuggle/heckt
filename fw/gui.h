@@ -22,8 +22,9 @@ typedef enum
 } lc_error_t;
 
 bool gui_init(void);
-void gui_debug(uint32_t ms);
+bool gui_is_pressed(void);
 void gui_render_page(gui_t page);
 void gui_render_page(lc_error_t error);
+void gui_render_debug(uint32_t ms);
 
 #endif
