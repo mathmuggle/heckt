@@ -22,6 +22,7 @@ static Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
 static void gui_print_value(double value, double scale, const char *unit);
 static void gui_print_capacitance(double capacitance);
 static void gui_print_inductance(double inductance);
+static void gui_print_centered(void (*printer)(double), double value);
 
 bool gui_init(void)
 {
@@ -97,12 +98,7 @@ void gui_render_page(gui_t page)
       display.drawRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
       display.setCursor(34, 4);
       display.println(F("INDUCTANCE"));
-      display.setCursor(9, 26);
-      display.print(F("L : "));
-      gui_print_inductance(lc_get_l());
-      display.setCursor(9, 45);
-      display.print(F("f : "));
-      gui_print_value(lc_get_f(), 1.0e-3, "kHz");
+      gui_print_centered(gui_print_inductance, lc_get_l());
       display.display();
       break;
     }
@@ -118,12 +114,7 @@ void gui_render_page(gui_t page)
       display.drawRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
       display.setCursor(31, 4);
       display.println(F("CAPACITANCE"));
-      display.setCursor(9, 26);
-      display.print(F("C : "));
-      gui_print_capacitance(lc_get_c());
-      display.setCursor(9, 45);
-      display.print(F("f : "));
-      gui_print_value(lc_get_f(), 1.0e-3, "kHz");
+      gui_print_centered(gui_print_capacitance, lc_get_c());
       display.display();
       break;
     }
@@ -146,7 +137,7 @@ void gui_render_page(gui_t page)
       display.print(F("C-EFF : "));
       gui_print_capacitance(lc_get_ec());
       display.setCursor(7, 50);
-      display.print(F("f-eff : "));
+      display.print(F("F-EFF : "));
       gui_print_value(lc_get_ef(), 1.0e-3, "kHz");
       display.display();
       break;
@@ -231,7 +222,7 @@ static void gui_print_value(double value, double scale, const char *unit)
 {
   if (!isfinite(value))
   {
-    display.print(F("--"));
+    display.print(F("NaN"));
     return;
   }
 
@@ -278,4 +269,30 @@ static void gui_print_inductance(double inductance)
   {
     gui_print_value(inductance, SCALE_NANO, "nH");
   }
+}
+
+static void gui_print_centered(void (*printer)(double), double value)
+{
+  display.setFont();
+  display.setTextWrap(false);
+  display.setTextSize(2);
+
+  display.setCursor(0, OLED_HEIGHT);
+  printer(value);
+  int16_t width = display.getCursorX();
+
+  uint8_t size = 2;
+  if (width > OLED_WIDTH - 2)
+  {
+    size = 1;
+    width /= 2;
+  }
+
+  const uint8_t top = OLED_TEXT_HEIGHT + 7;
+  const uint8_t height = OLED_HEIGHT - top - 1;
+
+  display.setTextSize(size);
+  display.setCursor((OLED_WIDTH - width) / 2,
+                    top + (height - OLED_TEXT_HEIGHT * size) / 2);
+  printer(value);
 }
