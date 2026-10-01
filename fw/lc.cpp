@@ -4,7 +4,7 @@
 
 #include "lc.h"
 #include "freq.h"
-#include "version.h"
+#include "config.h"
 
 static double eff_f = 0.0; // Tank resonant frequency [Hz]: relay OFF, no DUT
 static double eff_c = 0.0; // Calibrated effective tank capacitance [F]

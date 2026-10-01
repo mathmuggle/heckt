@@ -1,7 +1,7 @@
 #ifndef _HECKT_VERSION_H_
 #define _HECKT_VERSION_H_
 
-#define HECKT_VERSION "v.1.0.1"
+#define HECKT_VERSION "v.1.0.2"
 #define HECKT_RELEASE_DATE "2026.10.01"
 
 #define HECKT_PIN_DUT 4

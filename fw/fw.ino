@@ -1,6 +1,6 @@
 #include "lc.h"
 #include "gui.h"
-#include "version.h"
+#include "config.h"
 
 static gui_t current_page = GUI_CALIBRATION_INFO;
 

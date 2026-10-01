@@ -1,6 +1,6 @@
 #include "gui.h"
 #include "lc.h"
-#include "version.h"
+#include "config.h"
 
 #include <math.h>
 #include <Wire.h>
