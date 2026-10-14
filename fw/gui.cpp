@@ -22,6 +22,7 @@ static Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
 static void gui_print_value(double value, double scale, const char *unit);
 static void gui_print_capacitance(double capacitance);
 static void gui_print_inductance(double inductance);
+static void gui_print_frequency(double frequency);
 static void gui_print_centered(void (*printer)(double), double value);
 
 bool gui_init(void)
@@ -31,15 +32,58 @@ bool gui_init(void)
   return display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
 }
 
-// Detect a new button press
-bool gui_is_pressed(void)
+static bool gui_short_press_pending = false;
+static bool gui_long_press_pending = false;
+
+static void gui_update_button(void)
 {
   static bool was_pressed = false;
-  const bool pressed = (digitalRead(HECKT_PIN_BUTTON) == LOW);
-  const bool new_press = pressed && !was_pressed;
-  was_pressed = pressed;
+  static bool long_reported = false;
+  static uint32_t press_start_ms = 0U;
 
-  return new_press;
+  const bool pressed = (digitalRead(HECKT_PIN_BUTTON) == LOW);
+  const uint32_t now_ms = millis();
+
+  if (pressed && !was_pressed)
+  {
+    press_start_ms = now_ms;
+    long_reported = false;
+  }
+  else if (pressed && !long_reported &&
+           now_ms - press_start_ms >= HECKT_TIME_FREQ_LONG_HOLD_MS)
+  {
+    long_reported = true;
+    gui_long_press_pending = true;
+  }
+  else if (!pressed && was_pressed && !long_reported)
+  {
+    if (now_ms - press_start_ms >= HECKT_TIME_FREQ_LONG_HOLD_MS)
+    {
+      gui_long_press_pending = true;
+    }
+    else
+    {
+      gui_short_press_pending = true;
+    }
+  }
+
+  was_pressed = pressed;
+}
+
+bool gui_is_pressed(void)
+{
+  gui_update_button();
+  const bool pressed = gui_short_press_pending;
+  gui_short_press_pending = false;
+  return pressed;
+}
+
+bool gui_is_long_pressed(void)
+{
+  gui_update_button();
+  const bool pressed = gui_long_press_pending;
+  gui_long_press_pending = false;
+  return pressed;
 }
 
 void gui_render_page(gui_t page)
@@ -115,6 +159,22 @@ void gui_render_page(gui_t page)
       display.setCursor(31, 4);
       display.println(F("CAPACITANCE"));
       gui_print_centered(gui_print_capacitance, lc_get_c());
+      display.display();
+      break;
+    }
+
+    case GUI_FREQUENCY:
+    {
+      display.clearDisplay();
+      display.setFont();
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.setTextWrap(false);
+      display.drawRect(0, 0, OLED_WIDTH, OLED_TEXT_HEIGHT+7, SSD1306_WHITE);
+      display.drawRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
+      display.setCursor(37, 4);
+      display.println(F("FREQUENCY"));
+      gui_print_centered(gui_print_frequency, lc_get_f());
       display.display();
       break;
     }
@@ -268,6 +328,20 @@ static void gui_print_inductance(double inductance)
   else
   {
     gui_print_value(inductance, SCALE_NANO, "nH");
+  }
+}
+
+static void gui_print_frequency(double frequency)
+{
+  const double absolute_value = fabs(frequency);
+
+  if (absolute_value >= 1.0e3)
+  {
+    gui_print_value(frequency, 1.0e-3, "kHz");
+  }
+  else
+  {
+    gui_print_value(frequency, 1.0, "Hz");
   }
 }
 

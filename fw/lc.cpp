@@ -63,11 +63,7 @@ void lc_calibration_reset(void)
 void lc_meas_start(void)
 {
   lc_meas_stop();
-
-  if (is_calib)
-  {
-    freq_start();
-  }
+  freq_start();
 }
 
 void lc_meas_stop(void)
@@ -79,7 +75,7 @@ void lc_meas_stop(void)
 
 bool lc_update(void)
 {
-  if (!is_calib || !freq_ready())
+  if (!freq_ready())
   {
     return false;
   }

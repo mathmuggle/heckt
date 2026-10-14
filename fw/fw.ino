@@ -2,6 +2,7 @@
 #include "gui.h"
 #include "config.h"
 
+static gui_t last_page = GUI_CALIBRATION_INFO;
 static gui_t current_page = GUI_CALIBRATION_INFO;
 
 void setup()
@@ -29,12 +30,6 @@ void setup()
 
   gui_render_page(GUI_TITLE);
 
-  // Startup press should not start calibration.
-  while (digitalRead(HECKT_PIN_BUTTON) == LOW)
-  {
-    delay(1);
-  }
-
   if (lc_is_calibrated())
   {
     current_page = lc_dut_iscap() ? GUI_CAPACITANCE : GUI_INDUCTANCE;
@@ -42,16 +37,50 @@ void setup()
   }
 
   gui_render_page(current_page);
+
+  // Startup press should not start calibration.
+  while (digitalRead(HECKT_PIN_BUTTON) == LOW)
+  {
+    delay(1);
+  }
 }
 
 void loop()
 {
   const bool capacitance_mode = lc_dut_iscap();
 
+  if (gui_is_long_pressed())
+  {
+    if (current_page != GUI_FREQUENCY)
+    {
+      last_page = current_page;
+      lc_relay_off();
+      lc_meas_start();
+      current_page = GUI_FREQUENCY;
+      gui_render_page(current_page);
+    }
+
+    return;
+  }
+
   if (gui_is_pressed())
   {
     switch (current_page)
     {
+      case GUI_FREQUENCY:
+      {
+        lc_meas_stop();
+        current_page = last_page;
+
+        if (current_page == GUI_CAPACITANCE || current_page == GUI_INDUCTANCE)
+        {
+          lc_meas_start();
+        }
+
+        gui_render_page(current_page);
+        break;
+      }
+
       case GUI_CALIBRATION_INFO:
       {
         gui_render_page(GUI_CALIBRATION_LOADING);
@@ -84,6 +113,16 @@ void loop()
         gui_render_page(current_page);
         break;
       }
+    }
+
+    return;
+  }
+
+  if (current_page == GUI_FREQUENCY)
+  {
+    if (lc_update())
+    {
+      gui_render_page(current_page);
     }
 
     return;

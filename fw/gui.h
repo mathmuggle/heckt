@@ -11,6 +11,7 @@ typedef enum
   GUI_CALIBRATION_LOADING,
   GUI_INDUCTANCE,
   GUI_CAPACITANCE,
+  GUI_FREQUENCY,
   GUI_COUNT
 } gui_t;
 
@@ -23,6 +24,7 @@ typedef enum
 
 bool gui_init(void);
 bool gui_is_pressed(void);
+bool gui_is_long_pressed(void);
 void gui_render_page(gui_t page);
 void gui_render_page(lc_error_t error);
 void gui_render_debug(uint32_t ms);

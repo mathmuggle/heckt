@@ -2,7 +2,7 @@
 
 Software for a digital, self-calibrating LC meter built with an Arduino (ATmega328P), based on Neil Wayne Heckt's design published in the June 1996 issue of *Electronics Now* [1].
 
-This project grew out of my collaboration with [Tobias (KK7BCO/2M0TFF)](https://kk7bco.com/), who first introduced me to the design through Phil Rice's LC meter projects ([Version 1](https://sites.google.com/site/vk3bhr/home/lcm1) and [Version 2](https://sites.google.com/site/vk3bhr/home/index2-html)).
+This project grew out of my collaboration with [Tobias (KK7BCO/2M0TFF)](https://kk7bco.com/), who first introduced me to the design through Phil Rice's LC meter projects [2]. It also serves as the fifth build in [Red Summit RF](https://www.youtube.com/@RedSummitRF)'s *Beginner Homebrew Builder Series*.
 
 If you've always wanted an LC meter for your electronics hobby or radio projects, it's time to homebrew your own! Heckt himself offers some encouragement [1]:
 > It's really a "put it together and it works" project.
@@ -14,6 +14,7 @@ If you've always wanted an LC meter for your electronics hobby or radio projects
 - **Save calibration:** After successful calibration, the parameters are saved to EEPROM and retained even after the power is switched off. Press the button again to begin measuring.
 - **Normal startup:** On subsequent startups, the device loads the saved calibration and opens the measurement page selected by the SPDT switch: **C** for capacitance or **L** for inductance.
 - **Reset calibration:** Hold the button while powering on and keep it held until the title screen appears. Then release it; the calibration page will open.
+- **Frequency measurement:** Press and hold the button during normal operation or from the calibration page to display the oscillator frequency.
 
 ## files
 
@@ -27,10 +28,9 @@ If you've always wanted an LC meter for your electronics hobby or radio projects
 Use **Tools → Manage Libraries…** in the Arduino IDE to install:
 
 - **[Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306):** OLED display driver.
-- **[Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library):** Text and graphics for the OLED.
-
-Select **Install all** if prompted to install supporting libraries. `Wire` and `EEPROM` come with Arduino AVR board support. Select **Arduino Pro or Pro Mini (ATmega328P)** with the clock setting matching your board.
+- **[Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library):** Text and graphics library for the OLED.
 
 ## references
 
-1. Heckt - *Build this self-calibrating LC meter to measure capacitance and inductance* (1996)
+1. Neil Wayne Heckt - *Build this self-calibrating LC meter to measure capacitance and inductance*. Electronics Now (June 1996)
+2. Phil Rice - *A surprisingly accurate digital LC meter*. Amateur Radio (April 2004)
