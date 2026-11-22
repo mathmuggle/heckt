@@ -1,8 +1,8 @@
 #ifndef _HECKT_VERSION_H_
 #define _HECKT_VERSION_H_
 
-#define HECKT_VERSION "v.1.1.0"
-#define HECKT_RELEASE_DATE "2026.10.14"
+#define HECKT_VERSION "v.1.1.3"
+#define HECKT_RELEASE_DATE "2026.11.22"
 
 #define HECKT_PIN_DUT 4
 #define HECKT_PIN_RELAY 6

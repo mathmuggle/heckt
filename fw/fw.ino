@@ -48,8 +48,9 @@ void setup()
 void loop()
 {
   const bool capacitance_mode = lc_dut_iscap();
+  const gui_button_event_t button_event = gui_poll_button();
 
-  if (gui_is_long_pressed())
+  if (button_event == GUI_BUTTON_LONG_PRESS)
   {
     if (current_page != GUI_FREQUENCY)
     {
@@ -63,7 +64,7 @@ void loop()
     return;
   }
 
-  if (gui_is_pressed())
+  if (button_event == GUI_BUTTON_SHORT_PRESS)
   {
     switch (current_page)
     {

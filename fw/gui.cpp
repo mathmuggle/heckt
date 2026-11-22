@@ -32,10 +32,7 @@ bool gui_init(void)
   return display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
 }
 
-static bool gui_short_press_pending = false;
-static bool gui_long_press_pending = false;
-
-static void gui_update_button(void)
+gui_button_event_t gui_poll_button(void)
 {
   static bool was_pressed = false;
   static bool long_reported = false;
@@ -43,6 +40,7 @@ static void gui_update_button(void)
 
   const bool pressed = (digitalRead(HECKT_PIN_BUTTON) == LOW);
   const uint32_t now_ms = millis();
+  gui_button_event_t event = GUI_BUTTON_NONE;
 
   if (pressed && !was_pressed)
   {
@@ -53,37 +51,22 @@ static void gui_update_button(void)
            now_ms - press_start_ms >= HECKT_TIME_FREQ_LONG_HOLD_MS)
   {
     long_reported = true;
-    gui_long_press_pending = true;
+    event = GUI_BUTTON_LONG_PRESS;
   }
   else if (!pressed && was_pressed && !long_reported)
   {
     if (now_ms - press_start_ms >= HECKT_TIME_FREQ_LONG_HOLD_MS)
     {
-      gui_long_press_pending = true;
+      event = GUI_BUTTON_LONG_PRESS;
     }
     else
     {
-      gui_short_press_pending = true;
+      event = GUI_BUTTON_SHORT_PRESS;
     }
   }
 
   was_pressed = pressed;
-}
-
-bool gui_is_pressed(void)
-{
-  gui_update_button();
-  const bool pressed = gui_short_press_pending;
-  gui_short_press_pending = false;
-  return pressed;
-}
-
-bool gui_is_long_pressed(void)
-{
-  gui_update_button();
-  const bool pressed = gui_long_press_pending;
-  gui_long_press_pending = false;
-  return pressed;
+  return event;
 }
 
 void gui_render_page(gui_t page)

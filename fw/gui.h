@@ -17,14 +17,20 @@ typedef enum
 
 typedef enum
 {
+  GUI_BUTTON_NONE,
+  GUI_BUTTON_SHORT_PRESS,
+  GUI_BUTTON_LONG_PRESS
+} gui_button_event_t;
+
+typedef enum
+{
   LC_ERROR_NONE,
   LC_ERROR_CALIBRATION,
   LC_ERROR_COUNT
 } lc_error_t;
 
 bool gui_init(void);
-bool gui_is_pressed(void);
-bool gui_is_long_pressed(void);
+gui_button_event_t gui_poll_button(void);
 void gui_render_page(gui_t page);
 void gui_render_page(lc_error_t error);
 void gui_render_debug(uint32_t ms);
