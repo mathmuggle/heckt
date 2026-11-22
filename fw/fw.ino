@@ -15,13 +15,14 @@ void setup()
   }
 
   const uint32_t start_ms = millis();
+  bool calibrate_at_startup = false;
 
-  // Forget calibration at startup
+  // Open calibration at startup
   while (digitalRead(HECKT_PIN_BUTTON) == LOW)
   {
-    if (millis() - start_ms >= HECKT_TIME_CALIB_RESET_HOLD_MS)
+    if (millis() - start_ms >= HECKT_TIME_CALIB_HOLD_MS)
     {
-      lc_calibration_reset();
+      calibrate_at_startup = true;
       break;
     }
 
@@ -30,7 +31,7 @@ void setup()
 
   gui_render_page(GUI_TITLE);
 
-  if (lc_is_calibrated())
+  if (lc_is_calibrated() && !calibrate_at_startup)
   {
     current_page = lc_dut_iscap() ? GUI_CAPACITANCE : GUI_INDUCTANCE;
     lc_meas_start();
@@ -47,20 +48,31 @@ void setup()
 
 void loop()
 {
-  const bool capacitance_mode = lc_dut_iscap();
+  const bool is_cap = lc_dut_iscap();
   const gui_button_event_t button_event = gui_poll_button();
+  const gui_t measurement_page = is_cap ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+  const gui_t zero_page = is_cap ? GUI_ZERO_C : GUI_ZERO_L;
+  const bool zero_pending = current_page == GUI_ZERO_C || current_page == GUI_ZERO_L;
 
   if (button_event == GUI_BUTTON_LONG_PRESS)
   {
     if (current_page != GUI_FREQUENCY)
     {
-      last_page = current_page;
+      last_page = zero_pending ? measurement_page : current_page;
       lc_relay_off();
       lc_meas_start();
       current_page = GUI_FREQUENCY;
       gui_render_page(current_page);
     }
 
+    return;
+  }
+
+  if (zero_pending && current_page != zero_page)
+  {
+    current_page = measurement_page;
+    lc_meas_start();
+    gui_render_page(current_page);
     return;
   }
 
@@ -101,19 +113,33 @@ void loop()
 
       case GUI_CALIBRATION_RESULT:
       {
-        current_page = capacitance_mode ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+        current_page = measurement_page;
         lc_meas_start();
         gui_render_page(current_page);
         break;
       }
 
-      default:
+      case GUI_CAPACITANCE:
+      case GUI_INDUCTANCE:
       {
         lc_meas_stop();
-        current_page = GUI_CALIBRATION_INFO;
+        current_page = zero_page;
         gui_render_page(current_page);
         break;
       }
+
+      case GUI_ZERO_C:
+      case GUI_ZERO_L:
+      {
+        lc_zero(is_cap);
+
+        current_page = lc_dut_iscap() ? GUI_CAPACITANCE : GUI_INDUCTANCE;
+        lc_meas_start();
+        gui_render_page(current_page);
+        break;
+      }
+
+      default: break;
     }
 
     return;
@@ -133,9 +159,6 @@ void loop()
   {
     return;
   }
-
-  const gui_t measurement_page =
-    capacitance_mode ? GUI_CAPACITANCE : GUI_INDUCTANCE;
 
   if (current_page != measurement_page)
   {

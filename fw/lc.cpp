@@ -9,13 +9,16 @@
 static double eff_f = 0.0; // Tank resonant frequency [Hz]: relay OFF, no DUT
 static double eff_c = 0.0; // Calibrated effective tank capacitance [F]
 static double eff_i = 0.0; // Calibrated effective tank inductance [H]
+static double off_c = 0.0; // Open-lead capacitance offset [F]
+static double off_i = 0.0; // Shorted-lead inductance offset [H]
 
 static bool is_calib = false; // True for successful calibration
 static double freqency = NAN; // Latest measured frequency; NAN if unavailable
 static bool freq_reject = true; // Discard 1st reading after measurement start
 
-static double lc_wait_freq_ready(uint16_t gate_ms);
+static double lc_wait_freq_ready(uint16_t gate_ms, bool is_cap);
 static double lc_sample_frequency(bool relay_on);
+static double lc_get_raw(double frequency, double eff_val);
 
 void lc_init(void)
 {
@@ -37,7 +40,27 @@ void lc_init(void)
                isfinite(eff_i) && eff_i > 0.0;
   }
 
-  if (!is_calib)
+  if (is_calib)
+  {
+    if (EEPROM.read(HECKT_EEPROM_ADDR_OFF_C_FLAG) == HECKT_EEPROM_OFFSET_FLAG_VALID)
+    {
+      EEPROM.get(HECKT_EEPROM_ADDR_OFF_C, off_c);
+      if (!isfinite(off_c))
+      {
+        off_c = 0.0;
+      }
+    }
+
+    if (EEPROM.read(HECKT_EEPROM_ADDR_OFF_I_FLAG) == HECKT_EEPROM_OFFSET_FLAG_VALID)
+    {
+      EEPROM.get(HECKT_EEPROM_ADDR_OFF_I, off_i);
+      if (!isfinite(off_i))
+      {
+        off_i = 0.0;
+      }
+    }
+  }
+  else
   {
     eff_f = 0.0;
     eff_c = 0.0;
@@ -48,16 +71,6 @@ void lc_init(void)
 bool lc_is_calibrated(void)
 {
   return is_calib;
-}
-
-void lc_calibration_reset(void)
-{
-  EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_INVALID);
-  lc_meas_stop();
-  is_calib = false;
-  eff_f = 0.0;
-  eff_c = 0.0;
-  eff_i = 0.0;
 }
 
 void lc_meas_start(void)
@@ -99,28 +112,54 @@ bool lc_update(void)
   return true;
 }
 
-double lc_get_c(void)
+bool lc_zero(bool is_cap)
 {
-  if (!is_calib || !isfinite(freqency) || freqency <= 0.0)
+  if (!is_calib || lc_dut_iscap() != is_cap)
   {
-    return NAN;
+    return false;
   }
 
-  const double freq_ratio = eff_f / freqency;
+  freq_start();
+  const double freq = lc_wait_freq_ready(HECKT_TIME_FREQ_GATE_MS, is_cap);
+  freq_stop();
 
-  return eff_c * (freq_ratio * freq_ratio - 1.0);
+  const double offset = lc_get_raw(freq, is_cap ? eff_c : eff_i);
+
+  if (!isfinite(offset))
+  {
+    return false;
+  }
+
+  const int flag_addr = is_cap ? HECKT_EEPROM_ADDR_OFF_C_FLAG : HECKT_EEPROM_ADDR_OFF_I_FLAG;
+  const int offset_addr = is_cap ? HECKT_EEPROM_ADDR_OFF_C : HECKT_EEPROM_ADDR_OFF_I;
+  EEPROM.update(flag_addr, HECKT_EEPROM_OFFSET_FLAG_INVALID);
+  EEPROM.put(offset_addr, offset);
+  EEPROM.update(flag_addr, HECKT_EEPROM_OFFSET_FLAG_VALID);
+  (is_cap ? off_c : off_i) = offset;
+
+  return true;
+}
+
+double lc_get_c(void)
+{
+  return lc_get_raw(freqency, eff_c) - off_c;
 }
 
 double lc_get_l(void)
 {
-  if (!is_calib || !isfinite(freqency) || freqency <= 0.0)
+  return lc_get_raw(freqency, eff_i) - off_i;
+}
+
+static double lc_get_raw(double freq, double eff_val)
+{
+  if (!is_calib || !isfinite(freq) || freq <= 0.0)
   {
     return NAN;
   }
 
-  const double freq_ratio = eff_f / freqency;
+  const double freq_ratio = eff_f / freq;
 
-  return eff_i * (freq_ratio * freq_ratio - 1.0);
+  return eff_val * (freq_ratio * freq_ratio - 1.0);
 }
 
 double lc_get_f(void)
@@ -207,27 +246,31 @@ bool lc_calibrate(void)
   EEPROM.put(HECKT_EEPROM_ADDR_EFF_F, eff_f);
   EEPROM.put(HECKT_EEPROM_ADDR_EFF_C, eff_c);
   EEPROM.put(HECKT_EEPROM_ADDR_EFF_L, eff_i);
+  EEPROM.update(HECKT_EEPROM_ADDR_OFF_C_FLAG, HECKT_EEPROM_OFFSET_FLAG_INVALID);
+  EEPROM.update(HECKT_EEPROM_ADDR_OFF_I_FLAG, HECKT_EEPROM_OFFSET_FLAG_INVALID);
   EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_VALID);
 
+  off_c = 0.0;
+  off_i = 0.0;
   is_calib = true;
 
   return true;
 }
 
-static double lc_wait_freq_ready(uint16_t gate_ms)
+static double lc_wait_freq_ready(uint16_t gate_ms, bool is_cap)
 {
   const uint32_t start_ms = millis();
 
   while (!freq_ready())
   {
-    if (digitalRead(HECKT_PIN_DUT) != HECKT_DUT_CAPACITANCE_LEVEL ||
+    if (lc_dut_iscap() != is_cap ||
         millis() - start_ms > (uint32_t)gate_ms + 500U)
     {
       return NAN;
     }
   }
 
-  if (digitalRead(HECKT_PIN_DUT) != HECKT_DUT_CAPACITANCE_LEVEL)
+  if (lc_dut_iscap() != is_cap)
   {
     return NAN;
   }
@@ -252,7 +295,7 @@ static double lc_sample_frequency(bool relay_on)
   freq_start();
 
   // Discard the first gate after switching, as in the tested sketch.
-  if (!isfinite(lc_wait_freq_ready(HECKT_TIME_FREQ_GATE_MS)))
+  if (!isfinite(lc_wait_freq_ready(HECKT_TIME_FREQ_GATE_MS, true)))
   {
     freq_stop();
     return NAN;
@@ -260,10 +303,8 @@ static double lc_sample_frequency(bool relay_on)
 
   freq_init(HECKT_TIME_RELAY_SAMPLE_MS);
   freq_start();
-
-  const double frequency = lc_wait_freq_ready(HECKT_TIME_RELAY_SAMPLE_MS);
-
+  const double freq = lc_wait_freq_ready(HECKT_TIME_RELAY_SAMPLE_MS, true);
   freq_init(HECKT_TIME_FREQ_GATE_MS);
 
-  return frequency;
+  return freq;
 }

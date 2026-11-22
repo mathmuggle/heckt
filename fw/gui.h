@@ -12,6 +12,8 @@ typedef enum
   GUI_INDUCTANCE,
   GUI_CAPACITANCE,
   GUI_FREQUENCY,
+  GUI_ZERO_C,
+  GUI_ZERO_L,
   GUI_COUNT
 } gui_t;
 

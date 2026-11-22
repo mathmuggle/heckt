@@ -7,6 +7,7 @@ void lc_init(void);
 void lc_meas_start(void);
 void lc_meas_stop(void);
 bool lc_update(void);
+bool lc_zero(bool is_cap);
 
 // DUT measurements
 double lc_get_c(void);
@@ -24,6 +25,5 @@ void lc_relay_off(void);
 bool lc_dut_iscap(void);
 bool lc_calibrate(void);
 bool lc_is_calibrated(void);
-void lc_calibration_reset(void);
 
 #endif

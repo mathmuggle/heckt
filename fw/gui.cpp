@@ -105,7 +105,7 @@ void gui_render_page(gui_t page)
       display.setCursor(31, 4);
       display.println(F("CALIBRATION"));
       display.setCursor(7, 21);
-      display.print(F("1. KEEP LEADS OPEN"));
+      display.print(F("1. OPEN LEADS"));
       display.setCursor(7, 36);
       display.print(F("2. SET SPDT TO \"C\""));
       display.setCursor(7, 50);
@@ -199,6 +199,26 @@ void gui_render_page(gui_t page)
       display.print(F("CALIBRATION"));
       display.setCursor(34, 35);
       display.print(F("LOADING..."));
+      display.display();
+      break;
+    }
+
+    case GUI_ZERO_C:
+    case GUI_ZERO_L:
+    {
+      display.clearDisplay();
+      display.setFont();
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.setTextWrap(false);
+      display.drawRect(0, 0, OLED_WIDTH, OLED_TEXT_HEIGHT+7, SSD1306_WHITE);
+      display.drawRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
+      display.setCursor(43, 4);
+      display.print(page == GUI_ZERO_C ? F("ZERO C") : F("ZERO L"));
+      display.setCursor(7, 26);
+      display.print(page == GUI_ZERO_C ? F("1. OPEN LEADS") : F("1. SHORT LEADS"));
+      display.setCursor(7, 44);
+      display.print(F("2. PRESS TO ZERO"));
       display.display();
       break;
     }
