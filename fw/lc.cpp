@@ -161,10 +161,6 @@ bool lc_dut_iscap(void)
 bool lc_calibrate(void)
 {
   lc_meas_stop();
-  is_calib = false;
-  eff_f = 0.0;
-  eff_c = 0.0;
-  eff_i = 0.0;
   lc_relay_off();
 
   if (digitalRead(HECKT_PIN_DUT) != HECKT_DUT_CAPACITANCE_LEVEL)
@@ -194,15 +190,18 @@ bool lc_calibrate(void)
   const double freq_ratio = freq_off / freq_on;
   const double freq_ratio_sq = freq_ratio * freq_ratio;
 
-  eff_c = HECKT_CAP_CALIBRATION_FARAD / (freq_ratio_sq - 1.0);
-  eff_i = 1.0 / (4.0 * M_PI * M_PI * freq_off * freq_off * eff_c);
+  const double new_eff_c = HECKT_CAP_CALIBRATION_FARAD / (freq_ratio_sq - 1.0);
+  const double new_eff_i = 1.0 / (4.0 * M_PI * M_PI * freq_off * freq_off * new_eff_c);
 
-  if (!isfinite(eff_c) || !isfinite(eff_i) || eff_c <= 0.0 || eff_i <= 0.0)
+  if (!isfinite(new_eff_c) || !isfinite(new_eff_i) ||
+      new_eff_c <= 0.0 || new_eff_i <= 0.0)
   {
     return false;
   }
 
   eff_f = freq_off;
+  eff_c = new_eff_c;
+  eff_i = new_eff_i;
 
   EEPROM.update(HECKT_EEPROM_ADDR_CALIB_FLAG, HECKT_EEPROM_CALIB_FLAG_INVALID);
   EEPROM.put(HECKT_EEPROM_ADDR_EFF_F, eff_f);
